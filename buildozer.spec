@@ -18,8 +18,8 @@ android.ndk = 25b
 android.sdk = 33
 android.archs = arm64-v8a, armeabi-v7a
 
-# App icon & splash (place icon.png 512x512 in project root)
-# icon.filename = %(source.dir)s/assets/icon.png
+# App icon (place icon.png 512x512 in project root)
+icon.filename = %(source.dir)s/assets/icon.png
 # presplash.filename = %(source.dir)s/assets/splash.png
 
 android.orientation = portrait
