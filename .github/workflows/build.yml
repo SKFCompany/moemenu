@@ -1,0 +1,53 @@
+name: Build Android APK
+
+# Когда запускается сборка:
+# 1. Автоматически при пуше в main/master (если поменялся код приложения
+#    или сам buildozer.spec — не пересобираем зря на правки README и т.п.)
+# 2. Вручную из вкладки Actions на GitHub кнопкой "Run workflow"
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - "**.py"
+      - "buildozer.spec"
+      - "requirements.txt"
+      - "assets/**"
+      - ".github/workflows/build-android.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Скачать код репозитория
+        uses: actions/checkout@v4
+
+      # buildozer при первой сборке скачивает и компилирует Android SDK/NDK
+      # и все Python-зависимости под Android — это может занимать 30-60+
+      # минут. Кэш ускоряет все последующие сборки до нескольких минут.
+      - name: Кэш buildozer (Android SDK/NDK, python-for-android)
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            ~/.buildozer
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-${{ runner.os }}-
+
+      # Готовый образ со всеми системными зависимостями buildozer
+      # (Java, Android SDK, NDK, автоприём лицензий и т.д.) — без него
+      # пришлось бы вручную настраивать десяток пакетов на каждом ранере.
+      - name: Собрать APK (buildozer android debug)
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: stable
+
+      - name: Загрузить APK как артефакт сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: moemenu-debug-apk
+          path: ${{ steps.buildozer.outputs.filename }}
+          if-no-files-found: error
