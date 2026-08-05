@@ -17,10 +17,39 @@ on:
 
 jobs:
   build:
+    # Фиксируем конкретную LTS-версию Ubuntu (не "ubuntu-latest") — иначе
+    # рано или поздно GitHub переключит "latest" на новый релиз с другими
+    # версиями системных пакетов, и сборка отвалится без единой правки в
+    # самом проекте (именно это и случилось со сторонним Docker-экшеном:
+    # он пытался подключить PPA для Ubuntu-релиза, которого тот PPA ещё не
+    # поддерживает).
     runs-on: ubuntu-22.04
     steps:
       - name: Скачать код репозитория
         uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Системные зависимости buildozer/python-for-android по официальной
+      # документации: https://buildozer.readthedocs.io/en/latest/installation.html
+      # openjdk-17-jdk здесь ставится из штатного репозитория Ubuntu 22.04,
+      # без сторонних PPA — то, что как раз ломалось в Docker-образе экшена.
+      - name: Установить системные зависимости
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk-headless \
+            autoconf libtool pkg-config zlib1g-dev \
+            libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Установить buildozer и Cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
 
       # buildozer при первой сборке скачивает и компилирует Android SDK/NDK
       # и все Python-зависимости под Android — это может занимать 30-60+
@@ -35,19 +64,32 @@ jobs:
           restore-keys: |
             buildozer-${{ runner.os }}-
 
-      # Готовый образ со всеми системными зависимостями buildozer
-      # (Java, Android SDK, NDK, автоприём лицензий и т.д.) — без него
-      # пришлось бы вручную настраивать десяток пакетов на каждом ранере.
       - name: Собрать APK (buildozer android debug)
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
+        # buildozer скачивает исходники десятка C-библиотек (freetype,
+        # openssl, sqlite3 и т.д.) с внешних серверов — иногда они
+        # временно отвечают 502/503 или обрываются по таймауту (сервер
+        # перегружен, а не наша ошибка). buildozer уже ретраит сам
+        # скачивание с задержкой, но если после этого всё равно не
+        # получилось — просто перезапускаем всю сборку заново: то, что
+        # уже успешно скачалось и собралось, никуда не денется (лежит в
+        # .buildozer из кэша выше), повторный запуск просто продолжит с
+        # того места, где оборвалось.
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== Попытка сборки $attempt из 3 ==="
+            if yes | buildozer android debug; then
+              echo "Сборка успешна"
+              exit 0
+            fi
+            echo "Попытка $attempt не удалась, ждём 30 секунд перед повтором..."
+            sleep 30
+          done
+          echo "Все 3 попытки не удались"
+          exit 1
 
       - name: Загрузить APK как артефакт сборки
         uses: actions/upload-artifact@v4
         with:
           name: moemenu-debug-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
           if-no-files-found: error
