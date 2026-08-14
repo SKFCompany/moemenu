@@ -8,13 +8,13 @@ source.exclude_dirs = venv,.git,.buildozer,bin,__pycache__
 source.exclude_patterns = venv/*,*.pyc,*.pyo
 version = 1.0
 
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow==10.4.0,requests
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow==10.4.0,requests,cython==0.29.33
 
 # Android
 android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 android.api = 33
 android.minapi = 26
-android.ndk = 25b
+android.ndk = 28c
 android.sdk = 33
 android.archs = arm64-v8a, armeabi-v7a
 
