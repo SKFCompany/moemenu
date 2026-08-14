@@ -8,7 +8,7 @@ source.exclude_dirs = venv,.git,.buildozer,bin,__pycache__
 source.exclude_patterns = venv/*,*.pyc,*.pyo
 version = 1.0
 
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow==10.4.0,requests,cython==0.29.33
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow==10.4.0,requests,cython==3.0.11
 
 # Android
 android.permissions = INTERNET, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
