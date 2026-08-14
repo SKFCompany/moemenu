@@ -66,7 +66,35 @@ jobs:
 
       - name: Собрать APK (buildozer android debug)
         run: |
-          yes | buildozer android debug
+          set -o pipefail
+          yes | buildozer android debug 2>&1 | tee build.log
+
+      # Срабатывает только если предыдущий шаг упал. GitHub обрезает вывод
+      # шага в интерфейсе, поэтому здесь отдельно печатаем ~100 строк вокруг
+      # первого "error" из полного лога (build.log), плюс хвост лога —
+      # этого обычно достаточно, чтобы увидеть причину без скачивания raw log.
+      - name: Показать причину падения сборки
+        if: failure()
+        run: |
+          echo "════════════════════════════════════════════════════════"
+          echo " 100 строк начиная с первой найденной ошибки"
+          echo "════════════════════════════════════════════════════════"
+          awk 'BEGIN{IGNORECASE=1} /error[: ]|error$/{if(!found){found=1}} found{print; c++} c>=100{exit}' build.log
+
+          echo ""
+          echo "════════════════════════════════════════════════════════"
+          echo " Последние 100 строк лога (на случай, если ошибка не"
+          echo " попала под шаблон выше)"
+          echo "════════════════════════════════════════════════════════"
+          tail -n 100 build.log
+
+      - name: Загрузить полный лог сборки как артефакт
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Загрузить APK как артефакт сборки
         uses: actions/upload-artifact@v4
