@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+# Kivy / buildozer
+.buildozer/
+bin/
+*.apk
+*.aab
+
+# База данных — генерируется приложением при первом запуске,
+# коммитить незачем (и не нужно тащить в репозиторий чужие данные).
+data/recipes.db
+
+# Логи Kivy
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
