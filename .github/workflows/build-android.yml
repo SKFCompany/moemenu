@@ -49,7 +49,7 @@ jobs:
       - name: Установить buildozer и Cython
         run: |
           pip install --upgrade pip
-          pip install buildozer==1.6.0 cython==3.0.11
+          pip install buildozer==1.6.0 cython==0.29.36
 
       # buildozer при первой сборке скачивает и компилирует Android SDK/NDK
       # и все Python-зависимости под Android — это может занимать 30-60+
