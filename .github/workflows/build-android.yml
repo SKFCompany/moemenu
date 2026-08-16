@@ -124,11 +124,23 @@ jobs:
         if: always()
         run: |
           AAPT=$(find "$HOME/.buildozer/android/platform/android-sdk" -name "aapt" -type f 2>/dev/null | head -1)
-          if [ -z "$AAPT" ]; then
-            echo "aapt не найден, пропускаю проверку"
-          else
-            APK=$(find bin -name "*.apk" | head -1)
-            echo "Проверяю: $APK"
-            "$AAPT" dump badging "$APK" | grep -i orientation || echo "(строк про orientation в badging нет)"
-            "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -i -B2 -A2 "orientation" || echo "(строк про orientation в манифесте нет)"
-          fi
+          {
+            if [ -z "$AAPT" ]; then
+              echo "aapt не найден, пропускаю проверку"
+            else
+              APK=$(find bin -name "*.apk" | head -1)
+              echo "Проверяю: $APK"
+              echo "--- aapt dump badging | grep orientation ---"
+              "$AAPT" dump badging "$APK" | grep -i orientation || echo "(строк про orientation в badging нет)"
+              echo "--- aapt dump xmltree AndroidManifest.xml | grep orientation ---"
+              "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -i -B2 -A2 "orientation" || echo "(строк про orientation в манифесте нет)"
+            fi
+          } | tee orientation_check.txt
+
+      - name: Загрузить проверку ориентации как артефакт
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orientation-check
+          path: orientation_check.txt
+          if-no-files-found: ignore
