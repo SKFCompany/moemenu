@@ -71,7 +71,7 @@ jobs:
       - name: Собрать APK (buildozer android debug)
         run: |
           set -o pipefail
-          yes | buildozer android debug 2>&1 | tee build.log
+          (yes || true) | buildozer android debug 2>&1 | tee build.log
 
       # Срабатывает только если предыдущий шаг упал. GitHub обрезает вывод
       # шага в интерфейсе, поэтому здесь отдельно печатаем ~100 строк вокруг
