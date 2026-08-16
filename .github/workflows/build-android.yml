@@ -58,6 +58,17 @@ jobs:
       # buildozer при первой сборке скачивает и компилирует Android SDK/NDK
       # и все Python-зависимости под Android — это может занимать 30-60+
       # минут. Кэш ускоряет все последующие сборки до нескольких минут.
+      # ВАЖНО: без restore-keys. Раньше здесь был fallback-префикс
+      # "buildozer-${{ runner.os }}-", который при несовпадении точного
+      # ключа (например, после правки buildozer.spec) всё равно
+      # подсовывал САМЫЙ СВЕЖИЙ кэш от предыдущей конфигурации. А
+      # python-for-android не всегда перегенерирует AndroidManifest.xml
+      # и файлы Android-проекта при переиспользовании уже собранного
+      # "dist" — из-за этого правки вроде android.orientation тихо не
+      # применялись, хотя сборка была "зелёной". Теперь при любом
+      # изменении buildozer.spec кэш промахивается полностью и сборка
+      # идёт с нуля — дольше (30-60 мин), но без риска подсунуть старый
+      # манифест.
       - name: Кэш buildozer (Android SDK/NDK, python-for-android)
         uses: actions/cache@v4
         with:
@@ -65,8 +76,6 @@ jobs:
             .buildozer
             ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-${{ runner.os }}-
 
       - name: Собрать APK (buildozer android debug)
         run: |
