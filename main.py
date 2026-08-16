@@ -9,11 +9,28 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+from kivy.utils import platform
+
+# Разворачиваем интерфейс в горизонт средствами самого Kivy, а не через
+# Android-манифест. У связки Kivy/SDL2 в закреплённой версии
+# python-for-android (нужна именно эта старая версия для сборки под
+# Kivy 2.3.0 — см. buildozer.spec) есть баг: даже при верном
+# android:screenOrientation Android иногда не успевает физически
+# повернуть окно/поверхность рендеринга. Config.set('graphics',
+# 'rotation', 90) — официальный механизм Kivy для принудительного
+# поворота содержимого, который Kivy применяет сам, независимо от
+# Android, и корректно пересчитывает координаты касаний под поворот.
+# ВАЖНО: должно быть установлено ДО первого импорта, создающего Window
+# (поэтому этот блок — в самом верху файла, перед `from kivy.core.window
+# import Window`).
+if platform == "android":
+    from kivy.config import Config
+    Config.set("graphics", "rotation", "90")
+
 from kivymd.app import MDApp
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivy.core.window import Window
 from kivy.core.text import LabelBase
-from kivy.utils import platform
 
 if platform != "android":
     Window.size = (390, 844)

@@ -30,11 +30,8 @@ icon.filename = %(source.dir)s/assets/icon.png
 presplash.filename = %(source.dir)s/assets/splash.png
 android.presplash_color = #2E660D
 
-orientation = landscape
-# sensorLandscape — горизонтальная ориентация, но подстраивается под то,
-# как именно повёрнут телефон (обычный горизонт / вверх ногами), в
-# отличие от жёсткого "landscape", который фиксирует единственный поворот.
-android.manifest.orientation = sensorLandscape
+orientation = portrait
+android.manifest.orientation = portrait
 android.allow_backup = True
 
 # iOS (not configured)
