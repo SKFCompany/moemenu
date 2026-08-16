@@ -115,3 +115,20 @@ jobs:
           name: moemenu-debug-apk
           path: bin/*.apk
           if-no-files-found: error
+
+      # Диагностика: смотрим, что реально попало в манифест собранного
+      # APK (а не гадаем по логам сборки). Ищем aapt внутри Android SDK,
+      # который buildozer уже скачал, и печатаем всё, что относится к
+      # ориентации экрана.
+      - name: Проверить ориентацию в собранном APK
+        if: always()
+        run: |
+          AAPT=$(find "$HOME/.buildozer/android/platform/android-sdk" -name "aapt" -type f 2>/dev/null | head -1)
+          if [ -z "$AAPT" ]; then
+            echo "aapt не найден, пропускаю проверку"
+          else
+            APK=$(find bin -name "*.apk" | head -1)
+            echo "Проверяю: $APK"
+            "$AAPT" dump badging "$APK" | grep -i orientation || echo "(строк про orientation в badging нет)"
+            "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -i -B2 -A2 "orientation" || echo "(строк про orientation в манифесте нет)"
+          fi
