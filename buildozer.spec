@@ -30,12 +30,11 @@ icon.filename = %(source.dir)s/assets/icon.png
 presplash.filename = %(source.dir)s/assets/splash.png
 android.presplash_color = #2E660D
 
-android.orientation = all
-# unspecified (получается автоматически из "orientation = all") слушается
-# системной блокировки автоповорота на телефоне — если она включена в
-# шторке, экран не крутится вообще, и кажется, что настройка не сработала.
-# fullSensor поворачивает вместе с телефоном независимо от этой блокировки.
-android.manifest.orientation = fullSensor
+android.orientation = landscape
+# sensorLandscape — горизонтальная ориентация, но подстраивается под то,
+# как именно повёрнут телефон (обычный горизонт / вверх ногами), в
+# отличие от жёсткого "landscape", который фиксирует единственный поворот.
+android.manifest.orientation = sensorLandscape
 android.allow_backup = True
 
 # iOS (not configured)
