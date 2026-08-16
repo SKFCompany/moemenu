@@ -16,6 +16,7 @@ clear_widgets()+пересборка при КАЖДОМ заходе на гл�
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.app import App
 from datetime import date, datetime
@@ -27,7 +28,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.toolbar import MDTopAppBar
 
 from screens import theme
-from screens.icons import icon_char, meal_type_icon, MENU_SECTION_ICONS, GREETING_ICONS
+from screens.icons import icon_char, icon_label, meal_type_icon, MENU_SECTION_ICONS, GREETING_ICONS
 
 GREEN = theme.ACCENT
 
@@ -80,9 +81,9 @@ class MealRow(ButtonBehavior, MDBoxLayout):
         self.padding = [dp(2), dp(2)]
         self.recipe_id = recipe_id
 
-        self.add_widget(MDLabel(
-            text=meal_type_icon(meal_type), size_hint=(None, 1), width=dp(28),
-            font_name="Icons", font_style="H6", halign="center",
+        self.add_widget(icon_label(
+            meal_type_icon(meal_type), size_hint=(None, 1), width=dp(28),
+            font_style="H6", halign="center",
         ))
         col = MDBoxLayout(orientation="vertical")
         col.add_widget(MDLabel(
@@ -140,8 +141,8 @@ class TodayCard(MDCard):
         plan_rows = {r["meal_type"]: r for r in db.get_day_plan(today_iso)}
 
         title_row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(28), spacing=dp(4))
-        title_row.add_widget(MDLabel(
-            text=icon_char("calendar-today"), font_name="Icons", font_style="H6",
+        title_row.add_widget(icon_label(
+            icon_char("calendar-today"), font_style="H6",
             size_hint=(None, 1), width=dp(24),
         ))
         title_row.add_widget(MDLabel(
@@ -192,8 +193,8 @@ class ShoppingBadge(MDCard):
         self.md_bg_color = theme.chip_bg_soft()
         word = "товар" if count % 10 == 1 and count % 100 != 11 else (
             "товара" if 2 <= count % 10 <= 4 and not (12 <= count % 100 <= 14) else "товаров")
-        self.add_widget(MDLabel(
-            text=icon_char("cart-outline"), font_name="Icons", font_style="Body2",
+        self.add_widget(icon_label(
+            icon_char("cart-outline"), font_style="Body2",
             size_hint=(None, 1), width=dp(22),
             theme_text_color="Custom", text_color=theme.accent_text(),
         ))
@@ -224,8 +225,8 @@ class MenuCard(MDCard):
         self.spacing = dp(2)
         self.ripple_behavior = True
 
-        self.add_widget(MDLabel(
-            text=icon_char(icon), font_name="Icons", font_style="H5", halign="center",
+        self.add_widget(icon_label(
+            icon_char(icon), font_style="H5", halign="center",
             size_hint_y=None, height=dp(36),
         ))
         self.add_widget(MDLabel(
@@ -307,9 +308,8 @@ class HomeScreen(MDScreen):
             size_hint_x=None,
         )
         self.greeting_label.bind(texture_size=lambda inst, sz: setattr(inst, "width", sz[0]))
-        self.greeting_emoji = MDLabel(
-            text=icon_char(greet_icon), font_name="Icons",
-            font_style="Subtitle1",
+        self.greeting_emoji = icon_label(
+            icon_char(greet_icon), font_style="Subtitle1",
         )
         greeting_row.add_widget(self.greeting_label)
         greeting_row.add_widget(self.greeting_emoji)
@@ -325,11 +325,13 @@ class HomeScreen(MDScreen):
         ))
 
         grid = GridLayout(
-            cols=2,
+            cols=self._grid_cols(),
             spacing=dp(10),
             size_hint_y=None,
         )
         grid.bind(minimum_height=grid.setter("height"))
+        self._menu_grid = grid
+        Window.bind(size=self._on_window_resize)
         for screen_name, title, desc in MENU_ITEMS:
             grid.add_widget(MenuCard(
                 icon=MENU_SECTION_ICONS.get(screen_name, "help-circle-outline"),
@@ -340,3 +342,14 @@ class HomeScreen(MDScreen):
         scroll.add_widget(content)
         root.add_widget(scroll)
         self.add_widget(root)
+
+    def _grid_cols(self):
+        # Портрет на телефоне — 2 колонки, как и было. В альбомной
+        # ориентации (или на широком экране/планшете) ширины хватает под
+        # 3, иначе карточки растягиваются на всю ширину и выглядят пусто.
+        return 3 if Window.width >= dp(600) else 2
+
+    def _on_window_resize(self, instance, size):
+        cols = self._grid_cols()
+        if self._menu_grid.cols != cols:
+            self._menu_grid.cols = cols

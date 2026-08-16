@@ -27,9 +27,10 @@ android.archs = arm64-v8a, armeabi-v7a
 
 # App icon (place icon.png 512x512 in project root)
 icon.filename = %(source.dir)s/assets/icon.png
-# presplash.filename = %(source.dir)s/assets/splash.png
+presplash.filename = %(source.dir)s/assets/splash.png
+android.presplash_color = #2E660D
 
-android.orientation = portrait
+android.orientation = all
 android.allow_backup = True
 
 # iOS (not configured)

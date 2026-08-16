@@ -15,7 +15,7 @@ from kivy.metrics import dp
 from kivy.app import App
 
 from screens.widgets import build_recipe_image
-from screens.icons import icon_char
+from screens.icons import icon_char, icon_label
 from screens import theme
 
 GREEN = (0.18, 0.40, 0.05, 1)
@@ -116,10 +116,9 @@ class RecipeDetailScreen(MDScreen):
                 size_hint_x=None,
                 width=dp(84),
             )
-            chip.add_widget(MDLabel(
-                text=icon_char(icon),
+            chip.add_widget(icon_label(
+                icon_char(icon),
                 halign="center",
-                font_name="Icons",
                 font_style="Caption",
                 theme_text_color="Primary",
                 size_hint_y=None, height=dp(18),
@@ -192,9 +191,8 @@ class RecipeDetailScreen(MDScreen):
                 size_hint_y=None, height=dp(28),
                 spacing=dp(8),
             )
-            dot = MDLabel(
-                text=icon_char("circle-medium"),
-                font_name="Icons",
+            dot = icon_label(
+                icon_char("circle-medium"),
                 size_hint=(None, 1), width=dp(16),
                 theme_text_color="Custom",
                 text_color=theme.accent_text(),

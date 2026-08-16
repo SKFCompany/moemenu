@@ -13,7 +13,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.metrics import dp
 from kivy.app import App
 from screens import theme
-from screens.icons import category_icon
+from screens.icons import category_icon, icon_label
 from datetime import date, timedelta
 import calendar
 
@@ -44,6 +44,10 @@ class CalendarScreen(MDScreen):
         )
         root.add_widget(toolbar)
 
+        scroll = MDScrollView()
+        content = MDBoxLayout(orientation="vertical", size_hint_y=None,
+                              adaptive_height=True)
+
         nav = MDBoxLayout(orientation="horizontal", size_hint_y=None,
                           height=dp(44), padding=[dp(4), 0],
                           md_bg_color=theme.chip_bg())
@@ -55,7 +59,7 @@ class CalendarScreen(MDScreen):
         nav.add_widget(self.month_label)
         nav.add_widget(MDIconButton(icon="chevron-right",
                                     on_release=lambda x: self._next_month()))
-        root.add_widget(nav)
+        content.add_widget(nav)
 
         day_hdr = GridLayout(cols=7, size_hint_y=None, height=dp(28),
                              padding=[dp(8), 0])
@@ -63,24 +67,25 @@ class CalendarScreen(MDScreen):
             day_hdr.add_widget(MDLabel(text=d, halign="center",
                                        font_style="Caption",
                                        theme_text_color="Secondary"))
-        root.add_widget(day_hdr)
+        content.add_widget(day_hdr)
 
         self.cal_grid = GridLayout(cols=7, size_hint_y=None,
                                    padding=[dp(8), dp(2)], spacing=dp(2))
-        root.add_widget(self.cal_grid)
+        content.add_widget(self.cal_grid)
 
         self.day_detail = MDCard(
             orientation="vertical", radius=[dp(12)], padding=dp(12),
             size_hint_y=None, height=dp(1),
         )
-        root.add_widget(self.day_detail)
+        content.add_widget(self.day_detail)
 
-        scroll = MDScrollView()
         self.history_box = MDBoxLayout(
             orientation="vertical", spacing=dp(4),
-            padding=[dp(12), dp(8)], adaptive_height=True,
+            padding=[dp(12), dp(8)], size_hint_y=None, adaptive_height=True,
         )
-        scroll.add_widget(self.history_box)
+        content.add_widget(self.history_box)
+
+        scroll.add_widget(content)
         root.add_widget(scroll)
         self.add_widget(root)
 
@@ -208,9 +213,9 @@ class CalendarScreen(MDScreen):
                               spacing=dp(10), padding=[0, dp(4)])
             circle = MDCard(size_hint=(None, None), size=(dp(38), dp(38)),
                             radius=[dp(19)], md_bg_color=theme.chip_bg())
-            circle.add_widget(MDLabel(text=category_icon(h.get("recipe_emoji")),
-                                      halign="center", valign="center",
-                                      font_name="Icons", font_style="Subtitle1"))
+            circle.add_widget(icon_label(category_icon(h.get("recipe_emoji")),
+                                         halign="center", valign="center",
+                                         font_style="Subtitle1"))
             row.add_widget(circle)
             info = MDBoxLayout(orientation="vertical")
             info.add_widget(MDLabel(text=h["recipe_name"], font_style="Subtitle2",

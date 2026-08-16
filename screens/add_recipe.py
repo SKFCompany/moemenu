@@ -14,7 +14,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 from kivy.app import App
 from screens import theme
-from screens.icons import icon_char
+from screens.icons import icon_char, icon_label
 
 CATEGORIES = ["Завтрак", "Суп", "Салат", "Основное", "Паста", "Десерт", "Напиток"]
 CUISINES   = ["Казахская", "Японская", "Итальянская", "Русская",

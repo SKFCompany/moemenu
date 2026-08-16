@@ -72,6 +72,23 @@ def icon_char(name, default=FALLBACK_ICON):
     return md_icons.get(name, md_icons[default])
 
 
+def icon_label(text, font_style="H5", **kwargs):
+    """MDLabel, отображающий символ шрифта Icons (иконки MDI).
+
+    ВАЖНО: font_name нельзя передавать в конструктор MDLabel ОДНОВРЕМЕННО
+    с font_style. Внутри KivyMD 1.2.0 MDLabel.update_font_style() всегда
+    выполняется в конце __init__ (привязан к изменению font_style) и
+    молча перезаписывает font_name обратно на Roboto — даже если мы явно
+    передали font_name="Icons" в том же вызове. Результат: вместо иконки
+    рисуется "тофу"-квадратик (символ не найден в Roboto). Поэтому здесь
+    font_name выставляется ОТДЕЛЬНОЙ строкой, уже ПОСЛЕ создания виджета —
+    на этом этапе update_font_style больше не перезатирает его."""
+    from kivymd.uix.label import MDLabel
+    lbl = MDLabel(text=text, font_style=font_style, **kwargs)
+    lbl.font_name = "Icons"
+    return lbl
+
+
 def category_icon(category):
     return icon_char(CATEGORY_ICONS.get(category, FALLBACK_ICON))
 

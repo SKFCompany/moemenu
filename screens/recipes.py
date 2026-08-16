@@ -19,7 +19,7 @@ from kivy.clock import Clock
 from screens.widgets import build_recipe_image, TapIcon
 from data.database import DIET_TAGS, CUISINES
 from screens import theme
-from screens.icons import icon_char
+from screens.icons import icon_char, icon_label
 
 # MDI не умеет во флаги стран — используем нейтральную иконку "глобус",
 # название кухни всё равно всегда идёт рядом читаемым текстом.
@@ -52,9 +52,8 @@ class RecipeCard(MDCard):
         # Пожертвовали красивым наложением ради стабильности: бейдж кухни
         # теперь просто компактная строка над фото на обычном BoxLayout.
         badge_row = BoxLayout(size_hint_y=None, height=dp(22), padding=[dp(6), 0], spacing=dp(4))
-        badge_row.add_widget(MDLabel(
-            text=icon_char(CUISINE_ICON),
-            font_name="Icons",
+        badge_row.add_widget(icon_label(
+            icon_char(CUISINE_ICON),
             font_style="Caption",
             size_hint=(None, 1), width=dp(20),
         ))
@@ -296,6 +295,12 @@ class RecipesScreen(MDScreen):
             return
         self._last_signature = signature
 
+        # Отменяем предыдущую фоновую досборку карточек, если фильтр
+        # поменяли до того, как она успела закончиться — иначе старые и
+        # новые карточки перемешаются в списке.
+        if getattr(self, "_build_event", None):
+            self._build_event.cancel()
+
         theme.safe_clear(self.recipe_list)
         self.count_lbl.text = f"  Найдено рецептов: {len(recipes)}"
 
@@ -308,9 +313,28 @@ class RecipesScreen(MDScreen):
             ))
             return
 
-        for r in recipes:
-            card = RecipeCard(recipe=r, on_press=self._open_recipe)
-            self.recipe_list.add_widget(card)
+        # Создание карточки рецепта — это ~10 вложенных виджетов
+        # (MDCard + BoxLayout'ы + несколько MDLabel). При 90-100 рецептах
+        # разом это давало заметное зависание интерфейса при открытии
+        # экрана (создание почти тысячи виджетов синхронно в одном кадре).
+        # Строим карточки небольшими пачками, отдавая управление обратно
+        # в event loop Kivy между пачками — экран остаётся отзывчивым,
+        # а список просто дозаполняется за несколько кадров.
+        BATCH_SIZE = 8
+        state = {"i": 0}
+
+        def _build_batch(dt):
+            i = state["i"]
+            chunk = recipes[i:i + BATCH_SIZE]
+            for r in chunk:
+                card = RecipeCard(recipe=r, on_press=self._open_recipe)
+                self.recipe_list.add_widget(card)
+            state["i"] = i + BATCH_SIZE
+            if state["i"] >= len(recipes):
+                self._build_event = None
+                return False  # останавливаем schedule_interval
+
+        self._build_event = Clock.schedule_interval(_build_batch, 0)
 
     def _open_recipe(self, recipe):
         app = App.get_running_app()

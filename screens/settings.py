@@ -15,7 +15,7 @@ from kivymd.uix.selectioncontrol import MDSwitch
 from kivymd.uix.dialog import MDDialog
 
 from screens import theme
-from screens.icons import icon_char
+from screens.icons import icon_char, icon_label
 from data.image_cache import clear_cache
 
 
@@ -32,9 +32,9 @@ class SettingsRow(MDCard):
         self.padding = [dp(14), dp(8)]
         self.spacing = dp(12)
 
-        self.add_widget(MDLabel(
-            text=icon_char(icon), size_hint=(None, 1), width=dp(30),
-            font_name="Icons", font_style="H6", halign="center",
+        self.add_widget(icon_label(
+            icon_char(icon), size_hint=(None, 1), width=dp(30),
+            font_style="H6", halign="center",
         ))
         col = MDBoxLayout(orientation="vertical")
         col.add_widget(MDLabel(

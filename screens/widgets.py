@@ -10,7 +10,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.icon_definitions import md_icons
 
 from data.image_cache import get_cached_path, cache_in_background
-from screens.icons import icon_char, category_icon, FALLBACK_ICON
+from screens.icons import icon_char, category_icon, FALLBACK_ICON, icon_label
 
 # Шрифт иконок Material Design Icons — регистрируется самим KivyMD под
 # именем "Icons". Используем его вместо Unicode-эмодзи везде, где текст —
@@ -84,13 +84,7 @@ def _icon_label(category, font_style, icon_override=None):
         text = md_icons[icon_override]
     else:
         text = category_icon(category)
-    return MDLabel(
-        text=text,
-        font_style=font_style,
-        font_name=ICON_FONT,
-        halign="center",
-        valign="center",
-    )
+    return icon_label(text, font_style=font_style, halign="center", valign="center")
 
 
 class TapIcon(ButtonBehavior, MDLabel):
@@ -112,15 +106,22 @@ class TapIcon(ButtonBehavior, MDLabel):
     """
 
     def __init__(self, icon, color=None, size_dp=36, **kwargs):
+        # font_style нельзя передавать в тот же super().__init__(**kwargs),
+        # что и font_name — MDLabel.update_font_style() перезатирает
+        # font_name обратно на Roboto при ЛЮБОМ изменении font_style,
+        # включая самое первое, во время __init__. Поэтому вынимаем
+        # font_style из kwargs, применяем его отдельно, и только ПОСЛЕ
+        # этого выставляем font_name — тогда он гарантированно не будет
+        # затёрт заново (см. подробности в screens/icons.py::icon_label).
+        font_style = kwargs.pop("font_style", "H6")
         super().__init__(**kwargs)
         self.text = icon_char(icon)
+        self.font_style = font_style
         self.font_name = ICON_FONT
         self.halign = "center"
         self.valign = "center"
         self.size_hint = (None, None)
         self.size = (dp(size_dp), dp(size_dp))
-        if "font_style" not in kwargs:
-            self.font_style = "H6"
         if color:
             self.theme_text_color = "Custom"
             self.text_color = color
