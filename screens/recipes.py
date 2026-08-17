@@ -141,7 +141,14 @@ class RecipesScreen(MDScreen):
         self.current_tag = None
         self.search_text = ""
         self._last_signature = None
+        # Если задано — экран открыт "для выбора" из Меню недели: тап по
+        # рецепту не открывает карточку, а сразу ставит рецепт в этот
+        # приём пищи и возвращает обратно в Меню недели. См. start_picking.
+        self.pick_target = None
         self._build()
+
+    def start_picking(self, date_str, meal_key):
+        self.pick_target = (date_str, meal_key)
 
     def _build(self):
         root = MDBoxLayout(orientation="vertical")
@@ -153,6 +160,7 @@ class RecipesScreen(MDScreen):
             left_action_items=[["home", lambda x: self._go_home()]],
             right_action_items=[["plus-circle-outline", lambda x: self._go_add()]],
         )
+        self.toolbar = toolbar
         root.add_widget(toolbar)
 
         # Search
@@ -350,16 +358,30 @@ class RecipesScreen(MDScreen):
         self._build_event = Clock.schedule_interval(_build_batch, 0)
 
     def _open_recipe(self, recipe):
+        if self.pick_target:
+            date_str, meal_key = self.pick_target
+            self.pick_target = None
+            self.toolbar.title = "МоёМеню"
+            app = App.get_running_app()
+            app.db.set_meal(date_str, meal_key, recipe["name"], recipe_id=recipe["id"])
+            app.root.current = "meal_plan"
+            return
         app = App.get_running_app()
         detail = app.root.get_screen("recipe_detail")
         detail.load_recipe(recipe["id"], back_screen="recipes")
         app.root.current = "recipe_detail"
 
     def _go_add(self):
+        self.pick_target = None
+        self.toolbar.title = "МоёМеню"
         App.get_running_app().root.current = "add_recipe"
 
     def _go_home(self):
+        self.pick_target = None
+        self.toolbar.title = "МоёМеню"
         App.get_running_app().root.current = "home"
 
     def on_enter(self):
+        if self.pick_target:
+            self.toolbar.title = "Выберите рецепт для меню"
         self._load_recipes()

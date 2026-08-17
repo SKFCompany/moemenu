@@ -223,6 +223,8 @@ class MealPlanScreen(MDScreen):
             type="custom",
             content_cls=container,
             buttons=[
+                MDRaisedButton(text="Каталог рецептов",
+                               on_release=lambda x: self._open_recipes_picker()),
                 MDRaisedButton(text="Сохранить как текст", on_release=self._save_meal),
                 MDRaisedButton(text="Отмена", on_release=lambda x: self.dialog.dismiss()),
             ],
@@ -230,18 +232,24 @@ class MealPlanScreen(MDScreen):
         self.dialog.open()
         self._on_picker_search(self.text_field, self.text_field.text)
 
+    def _open_recipes_picker(self):
+        if not self._pending:
+            return
+        date_str, meal_key = self._pending
+        if self.dialog:
+            self.dialog.dismiss()
+        app = App.get_running_app()
+        recipes_screen = app.root.get_screen("recipes")
+        recipes_screen.start_picking(date_str, meal_key)
+        app.root.current = "recipes"
+
     def _on_picker_search(self, instance, value):
         theme.safe_clear(self.results_box)
+        if not value or len(value.strip()) < 2:
+            return
         db = App.get_running_app().db
-        query = (value or "").strip()
-        # Раньше список результатов был пуст, пока не введёшь хотя бы
-        # 2 символа — то есть выбрать рецепт "из списка" без печати было
-        # нельзя. Теперь при пустом поиске сразу показываем список всех
-        # рецептов (можно просто пролистать и выбрать), а поиск его
-        # сужает.
-        matches = db.get_all_recipes(search=query) if query else db.get_all_recipes()
-        limit = 15 if query else 40
-        for r in matches[:limit]:
+        matches = db.get_all_recipes(search=value.strip())[:6]
+        for r in matches:
             btn = MDRaisedButton(
                 text=r['name'],
                 size_hint=(1, None), height=dp(40),
@@ -249,12 +257,6 @@ class MealPlanScreen(MDScreen):
             )
             btn.bind(on_release=lambda x, rec=r: self._pick_recipe(rec))
             self.results_box.add_widget(btn)
-        if len(matches) > limit:
-            self.results_box.add_widget(MDLabel(
-                text=f"...и ещё {len(matches) - limit}. Уточните поиск.",
-                font_style="Caption", theme_text_color="Secondary",
-                size_hint_y=None, height=dp(24),
-            ))
 
     def _pick_recipe(self, recipe):
         if not self._pending:
