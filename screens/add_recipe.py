@@ -13,6 +13,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 from kivy.app import App
+from kivy.clock import Clock
 from screens import theme
 from screens.icons import icon_char, icon_label
 
@@ -89,6 +90,7 @@ class AddRecipeScreen(MDScreen):
         root.add_widget(toolbar)
 
         scroll = MDScrollView()
+        self.scroll = scroll
         form = MDBoxLayout(
             orientation="vertical",
             spacing=dp(10),
@@ -179,6 +181,22 @@ class AddRecipeScreen(MDScreen):
         scroll.add_widget(form)
         root.add_widget(scroll)
         self.add_widget(root)
+
+        # На Android клавиатура закрывала поля "Ингредиенты" и "Шаги
+        # приготовления" (они внизу формы) — экран не прокручивался сам,
+        # и было не видно, что печатаешь. При фокусе на любое поле
+        # прокручиваем экран так, чтобы это поле оказалось видно.
+        # Задержка нужна, чтобы дождаться, пока Android доанимирует
+        # появление клавиатуры и пересчитает реальную высоту окна —
+        # если прокрутить раньше, Kivy посчитает позицию по старой
+        # высоте и промахнётся.
+        for field in (self.name_field, self.cal_field, self.time_field,
+                      self.serv_field, self.ingr_field, self.steps_field):
+            field.bind(focus=self._on_field_focus)
+
+    def _on_field_focus(self, instance, is_focused):
+        if is_focused:
+            Clock.schedule_once(lambda dt: self.scroll.scroll_to(instance), 0.3)
 
     def _pick_emoji(self, emoji):
         self.sel_emoji[0] = emoji

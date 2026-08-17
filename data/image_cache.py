@@ -12,11 +12,26 @@
 
 import os
 import hashlib
-import threading
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 from kivy.app import App
 from kivy.clock import Clock
+
+# ВАЖНО: раньше на каждую незакэшированную картинку запускался СВОЙ
+# отдельный, ничем не ограниченный поток (threading.Thread). При быстром
+# переключении между кухнями (много рецептов, картинки ещё не в кэше) это
+# давало десятки одновременных сетевых запросов разом — отсюда и
+# "зависания" при просмотре рецептов. Общий пул из нескольких воркеров
+# ограничивает число одновременных загрузок, а лишние запросы просто
+# встают в очередь вместо того, чтобы душить телефон параллельными
+# соединениями.
+_executor = ThreadPoolExecutor(max_workers=3)
+
+# Какие URL уже поставлены в очередь на скачивание — чтобы при повторном
+# заходе на тот же экран (например, туда-обратно между кухнями) не
+# ставить в очередь одну и ту же картинку по второму разу.
+_pending = set()
 
 
 def _cache_dir():
@@ -45,13 +60,18 @@ def get_cached_path(url):
 
 def cache_in_background(url, on_done=None):
     """
-    Скачивает картинку в отдельном потоке (чтобы не блокировать UI)
-    и сохраняет её в кэш. on_done(local_path) вызывается в главном
-    потоке Kivy при успехе — можно не передавать, если результат не нужен
-    прямо сейчас (при следующем показе экрана она возьмётся из кэша сама).
+    Скачивает картинку в общем пуле потоков (ограниченном по числу
+    одновременных загрузок, чтобы не блокировать UI и не устраивать
+    десятки параллельных сетевых запросов) и сохраняет её в кэш.
+    on_done(local_path) вызывается в главном потоке Kivy при успехе —
+    можно не передавать, если результат не нужен прямо сейчас (при
+    следующем показе экрана она возьмётся из кэша сама).
     """
     if not url or get_cached_path(url):
         return
+    if url in _pending:
+        return
+    _pending.add(url)
 
     def worker():
         try:
@@ -67,8 +87,10 @@ def cache_in_background(url, on_done=None):
                 Clock.schedule_once(lambda dt: on_done(path))
         except Exception:
             pass  # нет сети / битая ссылка — просто остаёмся без кэша
+        finally:
+            _pending.discard(url)
 
-    threading.Thread(target=worker, daemon=True).start()
+    _executor.submit(worker)
 
 
 def clear_cache():

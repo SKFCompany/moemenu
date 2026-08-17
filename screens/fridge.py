@@ -15,7 +15,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.metrics import dp
 from kivy.app import App
 from screens import theme
-from screens.widgets import TapIcon
+from screens.widgets import TapIcon, TapLabel
 import math
 
 
@@ -137,11 +137,14 @@ class FridgeScreen(MDScreen):
                 size_hint_y=None, height=dp(32),
             ))
             for r in can_cook:
-                card.add_widget(MDLabel(
+                row = TapLabel(
                     text=f"  {r['name']}  ·  {r['cook_time']} мин",
                     font_style="Body2", theme_text_color="Primary",
+                    halign="left",
                     size_hint_y=None, height=dp(28),
-                ))
+                )
+                row.bind(on_release=lambda x, rid=r["id"]: self._open_recipe(rid))
+                card.add_widget(row)
             self.content.add_widget(card)
 
         if partial:
@@ -159,11 +162,14 @@ class FridgeScreen(MDScreen):
             all_missing = {}
             for p in partial:
                 r = p["recipe"]
-                shop_card.add_widget(MDLabel(
+                row = TapLabel(
                     text=f"  {r['name']}",
                     font_style="Body2", theme_text_color="Primary",
+                    halign="left",
                     size_hint_y=None, height=dp(26),
-                ))
+                )
+                row.bind(on_release=lambda x, rid=r["id"]: self._open_recipe(rid))
+                shop_card.add_widget(row)
                 for m in p["missing"]:
                     all_missing[m] = True
             if all_missing:
@@ -188,6 +194,12 @@ class FridgeScreen(MDScreen):
                 halign="center", theme_text_color="Secondary",
                 size_hint_y=None, height=dp(60),
             ))
+
+    def _open_recipe(self, recipe_id):
+        app = App.get_running_app()
+        detail = app.root.get_screen("recipe_detail")
+        detail.load_recipe(recipe_id, back_screen="fridge")
+        app.root.current = "recipe_detail"
 
     def _open_add(self):
         self.add_field = MDTextField(

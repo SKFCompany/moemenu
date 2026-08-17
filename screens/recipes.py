@@ -327,8 +327,21 @@ class RecipesScreen(MDScreen):
             i = state["i"]
             chunk = recipes[i:i + BATCH_SIZE]
             for r in chunk:
-                card = RecipeCard(recipe=r, on_press=self._open_recipe)
-                self.recipe_list.add_widget(card)
+                try:
+                    card = RecipeCard(recipe=r, on_press=self._open_recipe)
+                    self.recipe_list.add_widget(card)
+                except Exception as e:
+                    # Один "плохой" рецепт (например, отсутствует
+                    # обязательное поле) раньше обрывал всю пачку молча —
+                    # счётчик наверху показывал "Найдено: 9", а ниже была
+                    # пустота, потому что построение карточек падало на
+                    # полпути и больше не запускалось. Пропускаем только
+                    # этот рецепт и продолжаем строить остальные.
+                    import logging
+                    logging.getLogger("moemenu.recipes").warning(
+                        "Не удалось построить карточку рецепта id=%s: %s",
+                        r.get("id"), e,
+                    )
             state["i"] = i + BATCH_SIZE
             if state["i"] >= len(recipes):
                 self._build_event = None

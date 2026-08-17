@@ -33,6 +33,7 @@ android.presplash_color = #2E660D
 orientation = portrait
 android.manifest.orientation = portrait
 android.allow_backup = True
+android.softinput_mode = adjustResize
 
 # iOS (not configured)
 [buildozer]

@@ -2,7 +2,7 @@
 Общие переиспользуемые виджеты для экранов.
 """
 
-from kivy.uix.image import Image, AsyncImage
+from kivy.uix.image import Image
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.metrics import dp
 from kivy.clock import Clock
@@ -25,8 +25,15 @@ def build_recipe_image(url, category=None, font_style="H2", icon_override=None):
 
     1. Если картинка уже закэширована на диске — показываем её мгновенно,
        без сети (обычный Image, не AsyncImage).
-    2. Если нет — грузим по URL через AsyncImage и в фоне сохраняем
-       в кэш на будущее.
+    2. Если нет — показываем иконку-заглушку сразу и запускаем загрузку
+       в фоне (общий пул потоков, см. data/image_cache.py); когда
+       картинка скачается — подменяем заглушку на настоящее фото.
+       ВАЖНО: раньше здесь ОДНОВРЕМЕННО использовался AsyncImage
+       (собственная сетевая загрузка Kivy) И cache_in_background
+       (наша собственная загрузка) — то есть каждая некэшированная
+       картинка скачивалась ДВАЖДЫ параллельно. При переключении между
+       кухнями это давало десятки одновременных загрузок и ощущалось
+       как зависание интерфейса. Теперь загрузка ровно одна.
     3. Если картинки нет вовсе, либо загрузка не удалась (нет интернета,
        битая ссылка, 404) — показываем иконку. Если у рецепта есть своя
        валидная иконка Material Design Icons (icon_override — так
@@ -43,40 +50,29 @@ def build_recipe_image(url, category=None, font_style="H2", icon_override=None):
     if cached:
         return Image(source=cached, allow_stretch=True, keep_ratio=False)
 
-    img = AsyncImage(source=url, allow_stretch=True, keep_ratio=False)
-    # ВАЖНО: Kivy иногда дёргает on_error не из главного потока (виден
-    # реальный краш "Cannot change graphics instruction outside the main
-    # Kivy thread" в логе на Windows-сборке) — оборачиваем в
-    # Clock.schedule_once, чтобы замена виджета гарантированно случалась
-    # в главном потоке независимо от того, откуда пришло событие.
-    img.bind(on_error=lambda instance, *a: Clock.schedule_once(
-        lambda dt: _replace_with_icon(instance, category, font_style, icon_override)
-    ))
-    cache_in_background(url)
-    return img
+    placeholder = _icon_label(category, font_style, icon_override)
 
+    def _swap_in_image(local_path):
+        # Экран могли пересобрать/уйти с него, пока картинка качалась —
+        # заглушка в этом случае уже не часть видимого дерева, менять
+        # там нечего (см. подробное объяснение в _replace_with_icon).
+        if placeholder.get_root_window() is None:
+            return
+        parent = placeholder.parent
+        if not parent:
+            return
+        try:
+            idx = parent.children.index(placeholder)
+        except ValueError:
+            idx = 0
+        parent.remove_widget(placeholder)
+        parent.add_widget(
+            Image(source=local_path, allow_stretch=True, keep_ratio=False),
+            index=idx,
+        )
 
-def _replace_with_icon(instance, category, font_style, icon_override=None):
-    # Если on_error срабатывает ПОСЛЕ того, как карточку уже успели убрать
-    # с экрана (например, список рецептов пересобрали раньше, чем сеть
-    # ответила об ошибке) — instance.parent может ещё существовать
-    # (внутренняя ссылка img_box -> AsyncImage никуда не делась), но сам
-    # виджет уже не часть видимого дерева. Создавать замену в этом случае
-    # смысла нет: она осядет на "осиротевшем" поддереве, до которого не
-    # дотянется screens.theme.safe_clear() — и MDLabel всё равно навсегда
-    # подпишется на theme_cls. get_root_window() надёжно отличает "всё ещё
-    # на экране" от "уже выброшено, просто ещё не собрано сборщиком мусора".
-    if instance.get_root_window() is None:
-        return
-    parent = instance.parent
-    if not parent:
-        return
-    try:
-        idx = parent.children.index(instance)
-    except ValueError:
-        idx = 0
-    parent.remove_widget(instance)
-    parent.add_widget(_icon_label(category, font_style, icon_override), index=idx)
+    cache_in_background(url, on_done=_swap_in_image)
+    return placeholder
 
 
 def _icon_label(category, font_style, icon_override=None):
@@ -85,6 +81,15 @@ def _icon_label(category, font_style, icon_override=None):
     else:
         text = category_icon(category)
     return icon_label(text, font_style=font_style, halign="center", valign="center")
+
+
+class TapLabel(ButtonBehavior, MDLabel):
+    """Обычный MDLabel, по которому можно тапнуть — для строк в списках,
+    которые должны открывать что-то (например, название рецепта в
+    результатах "Что можно приготовить?" на экране холодильника)."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class TapIcon(ButtonBehavior, MDLabel):

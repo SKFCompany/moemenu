@@ -232,11 +232,16 @@ class MealPlanScreen(MDScreen):
 
     def _on_picker_search(self, instance, value):
         theme.safe_clear(self.results_box)
-        if not value or len(value.strip()) < 2:
-            return
         db = App.get_running_app().db
-        matches = db.get_all_recipes(search=value.strip())[:6]
-        for r in matches:
+        query = (value or "").strip()
+        # Раньше список результатов был пуст, пока не введёшь хотя бы
+        # 2 символа — то есть выбрать рецепт "из списка" без печати было
+        # нельзя. Теперь при пустом поиске сразу показываем список всех
+        # рецептов (можно просто пролистать и выбрать), а поиск его
+        # сужает.
+        matches = db.get_all_recipes(search=query) if query else db.get_all_recipes()
+        limit = 15 if query else 40
+        for r in matches[:limit]:
             btn = MDRaisedButton(
                 text=r['name'],
                 size_hint=(1, None), height=dp(40),
@@ -244,6 +249,12 @@ class MealPlanScreen(MDScreen):
             )
             btn.bind(on_release=lambda x, rec=r: self._pick_recipe(rec))
             self.results_box.add_widget(btn)
+        if len(matches) > limit:
+            self.results_box.add_widget(MDLabel(
+                text=f"...и ещё {len(matches) - limit}. Уточните поиск.",
+                font_style="Caption", theme_text_color="Secondary",
+                size_hint_y=None, height=dp(24),
+            ))
 
     def _pick_recipe(self, recipe):
         if not self._pending:
