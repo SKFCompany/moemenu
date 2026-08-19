@@ -332,7 +332,10 @@ class HomeScreen(MDScreen):
         grid.bind(minimum_height=grid.setter("height"))
         self._menu_grid = grid
         Window.bind(size=self._on_window_resize)
+        recipe_count = len(App.get_running_app().db.get_all_recipes())
         for screen_name, title, desc in MENU_ITEMS:
+            if screen_name == "recipes":
+                desc = f"{recipe_count} блюд, кухни мира"
             grid.add_widget(MenuCard(
                 icon=MENU_SECTION_ICONS.get(screen_name, "help-circle-outline"),
                 title=title, desc=desc, target=screen_name,

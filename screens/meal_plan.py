@@ -5,7 +5,7 @@ MealPlanScreen v2 — меню на неделю с кнопкой назад
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDRaisedButton, MDIconButton
 from screens.widgets import TapIcon
 from kivymd.uix.toolbar import MDTopAppBar
 from kivymd.uix.scrollview import MDScrollView
@@ -191,6 +191,10 @@ class MealPlanScreen(MDScreen):
             size_hint_y=None, height=dp(260),
         )
 
+        search_row = MDBoxLayout(
+            orientation="horizontal", spacing=dp(6),
+            size_hint_y=None, height=dp(48),
+        )
         self.text_field = MDTextField(
             hint_text="Впишите блюдо или найдите рецепт...",
             mode="rectangle",
@@ -201,10 +205,23 @@ class MealPlanScreen(MDScreen):
             self._selected_recipe_id = self.pending_recipe.get("id")
             self.pending_recipe = None
         self.text_field.bind(text=self._on_picker_search)
-        container.add_widget(self.text_field)
+        search_row.add_widget(self.text_field)
+
+        # "+" открывает полный каталог рецептов (со всеми фильтрами по
+        # кухне) для выбора — раньше это была третья кнопка внизу
+        # диалога, но три кнопки не помещались на узком экране и не
+        # нажимались. Иконка прямо у поля поиска всегда доступна и видна.
+        catalog_btn = MDIconButton(
+            icon="book-open-page-variant-outline",
+            theme_text_color="Custom",
+            text_color=theme.accent_text(),
+            on_release=lambda x: self._open_recipes_picker(),
+        )
+        search_row.add_widget(catalog_btn)
+        container.add_widget(search_row)
 
         hint = MDLabel(
-            text="Найдите рецепт из базы — тогда его ингредиенты попадут\nв автосписок покупок. Либо впишите что угодно от руки.",
+            text="Найдите рецепт из базы или нажмите книгу справа, чтобы\nоткрыть весь каталог. Либо впишите что угодно от руки.",
             font_style="Caption", theme_text_color="Secondary",
             size_hint_y=None, height=dp(36),
         )
@@ -223,8 +240,6 @@ class MealPlanScreen(MDScreen):
             type="custom",
             content_cls=container,
             buttons=[
-                MDRaisedButton(text="Каталог рецептов",
-                               on_release=lambda x: self._open_recipes_picker()),
                 MDRaisedButton(text="Сохранить как текст", on_release=self._save_meal),
                 MDRaisedButton(text="Отмена", on_release=lambda x: self.dialog.dismiss()),
             ],
