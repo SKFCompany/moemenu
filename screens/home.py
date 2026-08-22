@@ -332,7 +332,7 @@ class HomeScreen(MDScreen):
         grid.bind(minimum_height=grid.setter("height"))
         self._menu_grid = grid
         Window.bind(size=self._on_window_resize)
-        recipe_count = len(App.get_running_app().db.get_all_recipes())
+        recipe_count = App.get_running_app().db.count_recipes()
         for screen_name, title, desc in MENU_ITEMS:
             if screen_name == "recipes":
                 desc = f"{recipe_count} блюд, кухни мира"

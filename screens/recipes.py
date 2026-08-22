@@ -280,6 +280,8 @@ class RecipesScreen(MDScreen):
         self.search_text = value
         self._load_recipes()
 
+    PAGE_SIZE = 40
+
     def _load_recipes(self):
         db = App.get_running_app().db
         recipes = db.get_all_recipes(
@@ -321,19 +323,32 @@ class RecipesScreen(MDScreen):
             ))
             return
 
-        # Создание карточки рецепта — это ~10 вложенных виджетов
-        # (MDCard + BoxLayout'ы + несколько MDLabel). При 90-100 рецептах
-        # разом это давало заметное зависание интерфейса при открытии
-        # экрана (создание почти тысячи виджетов синхронно в одном кадре).
-        # Строим карточки небольшими пачками, отдавая управление обратно
-        # в event loop Kivy между пачками — экран остаётся отзывчивым,
-        # а список просто дозаполняется за несколько кадров.
+        # ВАЖНО: база рецептов выросла с ~100 до 800+, и при фильтре
+        # "Все кухни" сюда теперь может прийти хоть 840 рецептов разом.
+        # Раньше здесь просто строились ВСЕ найденные карточки пачками —
+        # при 20-100 штуках это было терпимо, но при 800+ само число
+        # виджетов (даже создаваемых по 8 за кадр) растягивалось на
+        # секунды и ощущалось как настоящее зависание, плюс каждое
+        # переключение кухни означало снести и заново создать сотни
+        # виджетов. Теперь СТРОИМ ТОЛЬКО ПЕРВУЮ СТРАНИЦУ (PAGE_SIZE штук)
+        # — сколько бы рецептов ни было в базе, экран открывается за то
+        # же время. Остальное подгружается по кнопке "Показать ещё" ниже.
+        self._pending_recipes = recipes
+        self._loaded_count = 0
+        self._build_next_page()
+
+    def _build_next_page(self):
+        recipes = self._pending_recipes
+        start = self._loaded_count
+        page = recipes[start:start + self.PAGE_SIZE]
+        self._loaded_count = start + len(page)
+
         BATCH_SIZE = 8
         state = {"i": 0}
 
         def _build_batch(dt):
             i = state["i"]
-            chunk = recipes[i:i + BATCH_SIZE]
+            chunk = page[i:i + BATCH_SIZE]
             for r in chunk:
                 try:
                     card = RecipeCard(recipe=r, on_press=self._open_recipe)
@@ -351,11 +366,28 @@ class RecipesScreen(MDScreen):
                         r.get("id"), e,
                     )
             state["i"] = i + BATCH_SIZE
-            if state["i"] >= len(recipes):
+            if state["i"] >= len(page):
                 self._build_event = None
+                self._refresh_load_more()
                 return False  # останавливаем schedule_interval
 
         self._build_event = Clock.schedule_interval(_build_batch, 0)
+
+    def _refresh_load_more(self):
+        if getattr(self, "_load_more_btn", None):
+            self.recipe_list.remove_widget(self._load_more_btn)
+            self._load_more_btn = None
+        remaining = len(self._pending_recipes) - self._loaded_count
+        if remaining <= 0:
+            return
+        btn = MDRaisedButton(
+            text=f"Показать ещё ({min(remaining, self.PAGE_SIZE)} из {remaining})",
+            size_hint=(1, None), height=dp(44),
+            md_bg_color=(0.18, 0.40, 0.05, 1),
+        )
+        btn.bind(on_release=lambda x: self._build_next_page())
+        self.recipe_list.add_widget(btn)
+        self._load_more_btn = btn
 
     def _open_recipe(self, recipe):
         if self.pick_target:
